@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Accounting vs Payment Report</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+</head>
+<body>
+    <div class="wrapper">
+        <div class="main-header">
+            <h1>Accounting group vs Payment Method report</h1>
+            <button id="helpBtn" title="How to use">?</button>
+        </div>
+
+        <div id="helpModal" class="modal hidden">
+            <div class="modal-content">
+                <h2>How to Use This Report</h2>
+                <ol>
+                    <li><strong>Upload Files:</strong> Select your Transactions (CSV 1) and Payments (CSV 2).</li>
+                    <li><strong>Apply Filters:</strong> Use the dropdowns to filter by Group or Method.</li>
+                    <li><strong>View Results:</strong> 
+                        <ul>
+                            <li><strong>Table 1 & 2:</strong> General sales and payments overview.</li>
+                            <li><strong>Table 3:</strong> Accounts appearing in <em>both</em> reports.</li>
+                            <li><strong>Table 4:</strong> Item totals for matched accounts.</li>
+                        </ul>
+                    </li>
+                </ol>
+                <button id="closeHelp">Close</button>
+            </div>
+        </div>
+
+        <header class="toolbar">
+            <div class="toolbar-row">
+                <div class="input-group">
+                    <label>Transactions Report:</label>
+                    <input type="file" id="csv1" accept=".csv">
+                </div>
+                <div class="input-group">
+                    <label>Payments Report:</label>
+                    <input type="file" id="csv2" accept=".csv">
+                </div>
+                <div class="input-group">
+                    <label>Group Filter:</label>
+                    <select id="groupFilter">
+                        <option value="all">All Groups</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label>Payment Method:</label>
+                    <select id="methodFilter">
+                        <option value="all">All Methods</option>
+                    </select>
+                </div>
+            </div>
+            <div id="results" class="status-bar hidden">
+                <span id="statusText"></span>
+            </div>
+        </header>
+
+        <main class="data-display">
+            <div class="tables-container">
+                <div id="salesTable" class="table-section"></div>
+                <div id="paymentsTable" class="table-section"></div>
+                <div id="matchedTable" class="table-section"></div>
+                <div id="itemsTable" class="table-section"></div>
+            </div>
+        </main>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
