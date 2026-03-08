@@ -1,14 +1,16 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // Modal Selectors
+    // Modal & Button Selectors
     const helpBtn = document.getElementById('helpBtn');
     const helpModal = document.getElementById('helpModal');
     const closeHelp = document.getElementById('closeHelp');
     const exportBtn = document.getElementById('exportBtn');
+    const clearBtn = document.getElementById('clearBtn');
 
     // Button Events
     if (helpBtn) helpBtn.onclick = () => helpModal.classList.remove('hidden');
     if (closeHelp) closeHelp.onclick = () => helpModal.classList.add('hidden');
     if (exportBtn) exportBtn.onclick = exportAllToCSV;
+    if (clearBtn) clearBtn.onclick = clearData;
 
     // Data Selectors
     const csv1Input = document.getElementById('csv1');
@@ -141,7 +143,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const sections = ['salesTable', 'paymentsTable', 'matchedTable', 'itemsTable'];
         
-        // Extract data from the DOM
         const extractedData = sections.map(id => {
             const container = document.getElementById(id);
             const titleEl = container.querySelector('.table-header');
@@ -150,55 +151,37 @@ document.addEventListener('DOMContentLoaded', () => {
             const rows = Array.from(container.querySelectorAll('tr')).map(tr => {
                 return Array.from(tr.querySelectorAll('th, td')).map(td => td.innerText);
             });
-            
             return { title, rows };
         });
 
-        // Find the maximum number of rows among all 4 tables to know how far down to loop
         let maxRows = 0;
         extractedData.forEach(data => {
-            if (data.rows.length > maxRows) {
-                maxRows = data.rows.length;
-            }
+            if (data.rows.length > maxRows) maxRows = data.rows.length;
         });
 
         let csvContent = "";
-
-        // Loop through row by row (horizontally)
-        // rowIndex -1 is used for the Table Titles
         for (let rowIndex = -1; rowIndex < maxRows; rowIndex++) {
             let rowArray = [];
-            
             extractedData.forEach((data, index) => {
                 if (rowIndex === -1) {
-                    // Output the Title spanning the first column of each table
                     rowArray.push(`"${data.title.replace(/"/g, '""')}"`, `""`);
                 } else {
-                    // Output Data Rows
                     if (rowIndex < data.rows.length) {
                         const cell1 = data.rows[rowIndex][0] || "";
                         const cell2 = data.rows[rowIndex][1] || "";
                         rowArray.push(`"${cell1.replace(/"/g, '""')}"`, `"${cell2.replace(/"/g, '""')}"`);
                     } else {
-                        // Empty cells if this specific table has fewer rows than the max
                         rowArray.push(`""`, `""`);
                     }
                 }
-                
-                // Add an empty spacer column between tables (except after the very last table)
-                if (index < extractedData.length - 1) {
-                    rowArray.push(`""`);
-                }
+                if (index < extractedData.length - 1) rowArray.push(`""`);
             });
-
             csvContent += rowArray.join(",") + "\n";
         }
 
-        // Trigger Download
         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement("a");
         const url = URL.createObjectURL(blob);
-        
         const timestamp = new Date().toISOString().split('T')[0];
         link.setAttribute("href", url);
         link.setAttribute("download", `Accounting_Report_${timestamp}.csv`);
@@ -206,6 +189,32 @@ document.addEventListener('DOMContentLoaded', () => {
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+    }
+
+    function clearData() {
+        if (!csv1Input.value && !csv2Input.value && txData.length === 0) return; // Already empty
+
+        const userConfirmed = confirm("Are you sure you want to clear all data and reset the dashboard?");
+        if (userConfirmed) {
+            // Reset Arrays
+            txData = [];
+            pyData = [];
+
+            // Reset File Inputs
+            csv1Input.value = '';
+            csv2Input.value = '';
+
+            // Reset Dropdowns
+            groupSelect.innerHTML = '<option value="all">All Groups</option>';
+            methodSelect.innerHTML = '<option value="all">All Methods</option>';
+
+            // Reset Tables with Placeholders
+            const placeholderHtml = '<div class="placeholder-text">Waiting for data...</div>';
+            salesContainer.innerHTML = placeholderHtml;
+            paymentsContainer.innerHTML = placeholderHtml;
+            matchedContainer.innerHTML = placeholderHtml;
+            itemsContainer.innerHTML = placeholderHtml;
+        }
     }
 
     [csv1Input, csv2Input, groupSelect, methodSelect].forEach(el => el.addEventListener('change', handleInteraction));
