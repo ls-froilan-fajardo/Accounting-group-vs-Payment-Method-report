@@ -11,7 +11,10 @@
     <div class="wrapper">
         <div class="main-header">
             <h1>Accounting group vs Payment Method report</h1>
-            <button id="helpBtn" title="How to use">?</button>
+            <div class="header-controls">
+                <button id="exportBtn" title="Export to CSV">Export all to CSV</button>
+                <button id="helpBtn" title="How to use">?</button>
+            </div>
         </div>
 
         <div id="helpModal" class="modal hidden">
@@ -27,6 +30,7 @@
                             <li><strong>Table 4:</strong> Item totals for matched accounts.</li>
                         </ul>
                     </li>
+                    <li><strong>Data Inclusion:</strong> All rows matching your filters are included (no prefix matching required).</li>
                 </ol>
                 <button id="closeHelp">Close</button>
             </div>
