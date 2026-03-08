@@ -1,5 +1,6 @@
 :root {
     --primary: #2563eb;
+    --danger: #ef4444;
     --bg: #f8fafc;
     --text: #0f172a;
     --border: #e2e8f0;
@@ -34,6 +35,12 @@ body {
 }
 #exportBtn:hover { background: #1d4ed8; }
 
+#clearBtn {
+    background: var(--danger); color: white; border: none; padding: 6px 12px;
+    border-radius: 4px; font-size: 13px; font-weight: 600; cursor: pointer; transition: background 0.2s;
+}
+#clearBtn:hover { background: #dc2626; }
+
 #helpBtn { 
     width: 26px; height: 26px; border-radius: 50%; border: 1px solid white; 
     background: transparent; color: white; font-size: 14px; cursor: pointer; 
@@ -55,11 +62,10 @@ body {
 label { display: block; font-size: 11px; font-weight: 800; margin-bottom: 4px; color: #64748b; text-transform: uppercase; }
 input, select { width: 100%; font-size: 13px; padding: 4px 6px; height: 32px; border: 1px solid var(--border); border-radius: 4px; }
 
-/* Data Display area - Constrained to 100vw */
+/* Data Display area */
 .data-display { flex: 1; padding: 10px; overflow: hidden; width: 100%; }
 .tables-container { display: flex; gap: 10px; height: 100%; width: 100%; justify-content: center; }
 
-/* 4 columns: 100% width minus the 3 gaps (30px total) divided by 4 */
 .table-section { width: calc((100% - 30px) / 4); height: 100%; display: flex; flex-direction: column; }
 
 .table-header { 
