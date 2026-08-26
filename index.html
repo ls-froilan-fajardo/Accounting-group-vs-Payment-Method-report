@@ -9,6 +9,7 @@
 </head>
 <body>
     <div class="wrapper">
+        <!-- Main Header -->
         <div class="main-header">
             <h1>Accounting group vs Payment Method report</h1>
             <div class="header-controls">
@@ -18,25 +19,28 @@
             </div>
         </div>
 
+        <!-- Help Modal -->
         <div id="helpModal" class="modal hidden">
             <div class="modal-content">
                 <h2>How to Use This Report</h2>
                 <ol>
                     <li><strong>Upload Files:</strong> Select your Transactions (CSV 1) and Payments (CSV 2).</li>
-                    <li><strong>Apply Filters:</strong> Use the dropdowns to filter by Group or Method.</li>
+                    <li><strong>Apply Filters:</strong> Use the dropdowns to filter by Group, Tax Name, or Payment Method.</li>
                     <li><strong>View Results:</strong> 
                         <ul>
-                            <li><strong>Table 1 & 2:</strong> General sales and payments overview.</li>
-                            <li><strong>Table 3:</strong> Accounts appearing in <em>both</em> reports.</li>
-                            <li><strong>Table 4:</strong> Item totals for matched accounts.</li>
+                            <li><strong>Table 1 (Sales):</strong> Tax summary (TaxName, PreTax, Tax).</li>
+                            <li><strong>Table 2 (Payments):</strong> Total payment per Account.</li>
+                            <li><strong>Table 3 (Matched Accounts):</strong> Tax summary for Accounts present in <em>both</em> reports.</li>
+                            <li><strong>Table 4 (Items):</strong> Item totals for those matched accounts.</li>
                         </ul>
                     </li>
-                    <li><strong>Data Inclusion:</strong> All rows matching your filters are included (no prefix matching required).</li>
+                    <li><strong>Data Inclusion:</strong> All rows matching your filters are included.</li>
                 </ol>
                 <button id="closeHelp">Close</button>
             </div>
         </div>
 
+        <!-- Toolbar -->
         <header class="toolbar">
             <div class="toolbar-row">
                 <div class="input-group">
@@ -54,6 +58,12 @@
                     </select>
                 </div>
                 <div class="input-group">
+                    <label>Tax Filter:</label>
+                    <select id="taxFilter">
+                        <option value="all">All Taxes</option>
+                    </select>
+                </div>
+                <div class="input-group">
                     <label>Payment Method:</label>
                     <select id="methodFilter">
                         <option value="all">All Methods</option>
@@ -65,6 +75,7 @@
             </div>
         </header>
 
+        <!-- Data Display Area -->
         <main class="data-display">
             <div class="tables-container">
                 <div id="salesTable" class="table-section"><div class="placeholder-text">Waiting for data...</div></div>
