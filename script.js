@@ -16,6 +16,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const csv1Input = document.getElementById('csv1');
     const csv2Input = document.getElementById('csv2');
     const groupSelect = document.getElementById('groupFilter');
+    const taxSelect = document.getElementById('taxFilter');
     const methodSelect = document.getElementById('methodFilter');
     
     const salesContainer = document.getElementById('salesTable');
@@ -53,6 +54,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const groups = [...new Set(txData.map(r => cleanName(r.Group)))].filter(n => n).sort();
         groupSelect.innerHTML = '<option value="all">All Groups</option>' + groups.map(g => `<option value="${g}">${g}</option>`).join('');
 
+        const taxes = [...new Set(txData.map(r => (r.TaxName || "").trim()))].filter(n => n).sort();
+        taxSelect.innerHTML = '<option value="all">All Taxes</option>' + taxes.map(t => `<option value="${t}">${t}</option>`).join('');
+
         const methods = [...new Set(pyData.map(r => cleanName(r.Method)))].filter(n => n).sort();
         methodSelect.innerHTML = '<option value="all">All Methods</option>' + methods.map(m => `<option value="${m}">${m}</option>`).join('');
     }
@@ -60,20 +64,10 @@ document.addEventListener('DOMContentLoaded', () => {
     function updateDashboard() {
         if (!txData.length || !pyData.length) return;
         const selGroup = groupSelect.value;
+        const selTax = taxSelect.value;
         const selMethod = methodSelect.value;
 
-        // 1. Sales Map
-        const salesMap = new Map();
-        let salesTotal = 0;
-        txData.forEach(r => {
-            if (selGroup !== 'all' && cleanName(r.Group) !== selGroup) return;
-            const acc = (r.Account || "").trim(); if (!acc) return;
-            const p = parseFloat(String(r.FinalPrice || "0").replace(/[^\d.-]/g, '')) || 0;
-            salesMap.set(acc, (salesMap.get(acc) || 0) + p);
-            salesTotal += p;
-        });
-
-        // 2. Payments Map
+        // 1. Process Payments
         const paymentsMap = new Map();
         let pyTotal = 0;
         pyData.forEach(r => {
@@ -84,20 +78,62 @@ document.addEventListener('DOMContentLoaded', () => {
             pyTotal += p;
         });
 
-        // 3. Matched Map
-        const matchedMap = new Map();
-        let matchedTotal = 0;
-        salesMap.forEach((p, acc) => {
-            if (paymentsMap.has(acc)) { matchedMap.set(acc, p); matchedTotal += p; }
+        // 2. Process Sales
+        const salesMap = new Map();
+        let salesTotalPrice = 0, salesTotalPre = 0, salesTotalTax = 0;
+
+        txData.forEach(r => {
+            if (selGroup !== 'all' && cleanName(r.Group) !== selGroup) return;
+            const taxName = (r.TaxName || "").trim();
+            if (selTax !== 'all' && taxName !== selTax) return;
+
+            const acc = (r.Account || "").trim(); if (!acc) return;
+
+            const price = parseFloat(String(r.FinalPrice || "0").replace(/[^\d.-]/g, '')) || 0;
+            const preTax = parseFloat(String(r.PreTax || "0").replace(/[^\d.-]/g, '')) || 0;
+            const taxAmt = parseFloat(String(r.Tax || r.TaxAmount || r['Tax Amount'] || r['Tax amount'] || "0").replace(/[^\d.-]/g, '')) || 0;
+
+            if (!salesMap.has(acc)) {
+                salesMap.set(acc, { price: 0, pre: 0, tax: 0, taxNames: new Set() });
+            }
+            
+            const sData = salesMap.get(acc);
+            sData.price += price;
+            sData.pre += preTax;
+            sData.tax += taxAmt;
+            if (taxName) sData.taxNames.add(taxName);
+            
+            salesTotalPrice += price;
+            salesTotalPre += preTax;
+            salesTotalTax += taxAmt;
         });
 
-        // 4. Items Map
+        // 3. Process Matches based on Sales Map Data
+        const matchedMap = new Map();
+        let matchedTotalPrice = 0, matchedTotalPre = 0, matchedTotalTax = 0;
+
+        salesMap.forEach((sData, acc) => {
+            if (paymentsMap.has(acc)) {
+                matchedMap.set(acc, sData);
+                matchedTotalPrice += sData.price;
+                matchedTotalPre += sData.pre;
+                matchedTotalTax += sData.tax;
+            }
+        });
+
+        // 4. Process Aggregated Items for Matched Accounts
         const matchedAccounts = new Set(matchedMap.keys());
         const itemCounts = new Map();
         let totalQty = 0;
         txData.forEach(r => {
             const acc = (r.Account || "").trim();
-            if (matchedAccounts.has(acc) && (selGroup === 'all' || cleanName(r.Group) === selGroup) && r.Item) {
+            const taxName = (r.TaxName || "").trim();
+            
+            if (matchedAccounts.has(acc) && 
+                (selGroup === 'all' || cleanName(r.Group) === selGroup) && 
+                (selTax === 'all' || taxName === selTax) && 
+                r.Item) {
+                
                 const item = r.Item.trim();
                 itemCounts.set(item, (itemCounts.get(item) || 0) + 1);
                 totalQty++;
@@ -105,27 +141,50 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         // Dynamic Titles
-        const sTitle = selGroup === 'all' ? "Sales of the day" : `Sales of the day (${selGroup})`;
+        const taxLabel = selTax === 'all' ? "" : ` [${selTax}]`;
+        const sTitle = selGroup === 'all' ? `Sales of the day${taxLabel}` : `Sales of the day (${selGroup})${taxLabel}`;
         const pTitle = selMethod === 'all' ? "Payments Received" : `Payments Received (${selMethod})`;
-        const mTitle = `Accounts: ${selGroup === 'all' ? 'All' : selGroup} closed by ${selMethod === 'all' ? 'Any' : selMethod}`;
-        const iTitle = `Items: ${selGroup === 'all' ? 'Groups' : selGroup} closed by ${selMethod === 'all' ? 'All' : selMethod}`;
+        const mTitle = `Accounts: ${selGroup === 'all' ? 'All' : selGroup}${taxLabel} closed by ${selMethod === 'all' ? 'Any' : selMethod}`;
+        const iTitle = `Items: ${selGroup === 'all' ? 'Groups' : selGroup}${taxLabel} closed by ${selMethod === 'all' ? 'All' : selMethod}`;
 
         // Render Tables
-        salesContainer.innerHTML = buildTable(sTitle, salesMap, salesTotal);
+        salesContainer.innerHTML = buildAccountTaxTable(sTitle, salesMap, salesTotalPrice, salesTotalPre, salesTotalTax);
         paymentsContainer.innerHTML = buildTable(pTitle, paymentsMap, pyTotal);
-        matchedContainer.innerHTML = buildTable(mTitle, matchedMap, matchedTotal);
+        matchedContainer.innerHTML = buildAccountTaxTable(mTitle, matchedMap, matchedTotalPrice, matchedTotalPre, matchedTotalTax);
         itemsContainer.innerHTML = buildItemTable(iTitle, itemCounts, totalQty);
     }
 
+    // Number formatting helper to enforce exactly 2 decimal places everywhere
+    const formatNum = (num) => num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    // Builder for 5-Column Account+Tax Tables
+    function buildAccountTaxTable(title, map, tPrice, tPre, tTax) {
+        const keys = [...map.keys()].sort();
+        if (!keys.length) return `<div class="table-header">${title}</div><div class="placeholder-text">No data.</div>`;
+        
+        let html = `<div class="table-header">${title}</div><div class="table-wrapper"><table><thead><tr><th>Account</th><th class="text-right">Price</th><th>TaxName</th><th class="text-right">PreTax</th><th class="text-right">Tax</th></tr></thead><tbody>`;
+        
+        html += `<tr class="total-row"><td>TOTAL</td><td class="text-right">${formatNum(tPrice)}</td><td></td><td class="text-right">${formatNum(tPre)}</td><td class="text-right">${formatNum(tTax)}</td></tr>`;
+        
+        keys.forEach(k => {
+            const vals = map.get(k);
+            const tNames = Array.from(vals.taxNames).join(', ');
+            html += `<tr><td>${k}</td><td class="text-right">${formatNum(vals.price)}</td><td>${tNames}</td><td class="text-right">${formatNum(vals.pre)}</td><td class="text-right">${formatNum(vals.tax)}</td></tr>`;
+        });
+        return html + `</tbody></table></div>`;
+    }
+
+    // Builder for 2-Column Standard Tables
     function buildTable(title, map, total) {
         const keys = [...map.keys()].sort();
         if (!keys.length) return `<div class="table-header">${title}</div><div class="placeholder-text">No data.</div>`;
         let html = `<div class="table-header">${title}</div><div class="table-wrapper"><table><thead><tr><th>Account</th><th class="text-right">Price</th></tr></thead><tbody>`;
-        html += `<tr class="total-row"><td>TOTAL</td><td class="text-right">${total.toLocaleString(undefined, {minimumFractionDigits: 2})}</td></tr>`;
-        keys.forEach(k => html += `<tr><td>${k}</td><td class="text-right">${map.get(k).toLocaleString(undefined, {minimumFractionDigits: 2})}</td></tr>`);
+        html += `<tr class="total-row"><td>TOTAL</td><td class="text-right">${formatNum(total)}</td></tr>`;
+        keys.forEach(k => html += `<tr><td>${k}</td><td class="text-right">${formatNum(map.get(k))}</td></tr>`);
         return html + `</tbody></table></div>`;
     }
 
+    // Builder for 2-Column Quantity Tables
     function buildItemTable(title, map, qty) {
         const keys = [...map.keys()].sort();
         if (!keys.length) return `<div class="table-header">${title}</div><div class="placeholder-text">No items.</div>`;
@@ -135,6 +194,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return html + `</tbody></table></div>`;
     }
 
+    // Dynamic CSV Export
     function exportAllToCSV() {
         if (!txData.length || !pyData.length) {
             alert("Please upload and process data before exporting.");
@@ -151,7 +211,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const rows = Array.from(container.querySelectorAll('tr')).map(tr => {
                 return Array.from(tr.querySelectorAll('th, td')).map(td => td.innerText);
             });
-            return { title, rows };
+            const colsCount = rows.length > 0 ? rows[0].length : 2; 
+            return { title, rows, colsCount };
         });
 
         let maxRows = 0;
@@ -164,14 +225,16 @@ document.addEventListener('DOMContentLoaded', () => {
             let rowArray = [];
             extractedData.forEach((data, index) => {
                 if (rowIndex === -1) {
-                    rowArray.push(`"${data.title.replace(/"/g, '""')}"`, `""`);
+                    rowArray.push(`"${data.title.replace(/"/g, '""')}"`);
+                    for (let i = 1; i < data.colsCount; i++) rowArray.push(`""`);
                 } else {
                     if (rowIndex < data.rows.length) {
-                        const cell1 = data.rows[rowIndex][0] || "";
-                        const cell2 = data.rows[rowIndex][1] || "";
-                        rowArray.push(`"${cell1.replace(/"/g, '""')}"`, `"${cell2.replace(/"/g, '""')}"`);
+                        for (let i = 0; i < data.colsCount; i++) {
+                            const cell = data.rows[rowIndex][i] || "";
+                            rowArray.push(`"${cell.replace(/"/g, '""')}"`);
+                        }
                     } else {
-                        rowArray.push(`""`, `""`);
+                        for (let i = 0; i < data.colsCount; i++) rowArray.push(`""`);
                     }
                 }
                 if (index < extractedData.length - 1) rowArray.push(`""`);
@@ -192,23 +255,17 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function clearData() {
-        if (!csv1Input.value && !csv2Input.value && txData.length === 0) return; // Already empty
+        if (!csv1Input.value && !csv2Input.value && txData.length === 0) return;
 
-        const userConfirmed = confirm("Are you sure you want to clear all data and reset the dashboard?");
-        if (userConfirmed) {
-            // Reset Arrays
+        if (confirm("Are you sure you want to clear all data and reset the dashboard?")) {
             txData = [];
             pyData = [];
-
-            // Reset File Inputs
             csv1Input.value = '';
             csv2Input.value = '';
-
-            // Reset Dropdowns
             groupSelect.innerHTML = '<option value="all">All Groups</option>';
+            taxSelect.innerHTML = '<option value="all">All Taxes</option>';
             methodSelect.innerHTML = '<option value="all">All Methods</option>';
 
-            // Reset Tables with Placeholders
             const placeholderHtml = '<div class="placeholder-text">Waiting for data...</div>';
             salesContainer.innerHTML = placeholderHtml;
             paymentsContainer.innerHTML = placeholderHtml;
@@ -217,5 +274,5 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    [csv1Input, csv2Input, groupSelect, methodSelect].forEach(el => el.addEventListener('change', handleInteraction));
+    [csv1Input, csv2Input, groupSelect, taxSelect, methodSelect].forEach(el => el.addEventListener('change', handleInteraction));
 });
